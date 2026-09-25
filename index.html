@@ -398,13 +398,13 @@
     let timerInterval = null;
 
     function initData() {
-        let savedBeers = localStorage.getItem('picitac_beers_v7');
+        let savedBeers = localStorage.getItem('picitac_beers_v8');
         beersData = savedBeers ? JSON.parse(savedBeers) : [...defaultBeers];
 
-        let savedState = localStorage.getItem('picitac_state_v7');
+        let savedState = localStorage.getItem('picitac_state_v8');
         state = savedState ? JSON.parse(savedState) : {};
 
-        let savedHist = localStorage.getItem('picitac_history_v7');
+        let savedHist = localStorage.getItem('picitac_history_v8');
         historyData = savedHist ? JSON.parse(savedHist) : [];
 
         updateDate();
@@ -452,46 +452,26 @@
         statusEl.innerHTML = '⏳ Načítám z Malt Worm...';
 
         const renderUrl = 'https://picitac.onrender.com';
-        
-        // Nové spolehlivější proxy servery
-        const proxies = [
-            async () => {
-                const r = await fetch('https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl));
-                return await r.text();
-            },
-            async () => {
-                const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(targetUrl));
-                return await r.text();
-            },
-            async () => {
-                const r = await fetch('https://thingproxy.freeboard.io/fetch/' + targetUrl);
-                return await r.text();
-            }
-        ];
 
-        let htmlContent = null;
+        try {
+            const r = await fetch(renderUrl);
+            const htmlContent = await r.text();
 
-        for (let i = 0; i < proxies.length; i++) {
-            try {
-                htmlContent = await proxies[i]();
-                if (htmlContent && htmlContent.length > 500) break;
-            } catch (e) {
-                console.warn(`Proxy ${i + 1} selhala.`);
+            if (htmlContent && htmlContent.length > 500) {
+                let parsed = parseHTMLMenu(htmlContent);
+                if (parsed && parsed.length >= 3) {
+                    beersData = parsed;
+                    localStorage.setItem('picitac_beers_v8', JSON.stringify(beersData));
+                    render();
+                    statusEl.innerHTML = `✅ Automaticky aktualizováno (${new Date().toLocaleTimeString('cs-CZ', {hour: '2-digit', minute:'2-digit'})}). Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
+                    return;
+                }
             }
+        } catch (e) {
+            console.warn('Stahování přes Render selhalo', e);
         }
 
-        if (htmlContent) {
-            let parsed = parseHTMLMenu(htmlContent);
-            if (parsed && parsed.length >= 3) {
-                beersData = parsed;
-                localStorage.setItem('picitac_beers_v7', JSON.stringify(beersData));
-                render();
-                statusEl.innerHTML = `✅ Aktualizováno (${new Date().toLocaleTimeString('cs-CZ', {hour: '2-digit', minute:'2-digit'})}). Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
-                return;
-            }
-        }
-
-        statusEl.innerHTML = `📌 Zobrazena uložená nabídka. Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
+        statusEl.innerHTML = `📌 Zobrazená uložená nabídka. Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
     }
 
     function parseHTMLMenu(htmlText) {
@@ -501,7 +481,6 @@
             let fetchedBeers = [];
             let idx = 1;
 
-            // Vyhledání prvků na stránce Malt Worm
             const elements = doc.querySelectorAll('p, div, li, td');
             elements.forEach(el => {
                 const text = el.innerText ? el.innerText.trim() : '';
@@ -517,7 +496,6 @@
                 }
             });
 
-            // Zložnější fallback podle řádků
             if (fetchedBeers.length === 0) {
                 const lines = doc.body.innerText.split('\n').map(l => l.trim()).filter(l => l.length > 3);
                 lines.forEach(line => {
@@ -608,7 +586,7 @@
     }
 
     function saveState() {
-        localStorage.setItem('picitac_state_v7', JSON.stringify(state));
+        localStorage.setItem('picitac_state_v8', JSON.stringify(state));
     }
 
     function calc() {
@@ -634,7 +612,7 @@
         const name = prompt("Úprava názvu položky:", item.name);
         if (name) {
             item.name = name;
-            localStorage.setItem('picitac_beers_v7', JSON.stringify(beersData));
+            localStorage.setItem('picitac_beers_v8', JSON.stringify(beersData));
             render();
         }
     }
@@ -695,7 +673,7 @@
                 count: totalPcs
             };
             historyData.unshift(entry);
-            localStorage.setItem('picitac_history_v7', JSON.stringify(historyData));
+            localStorage.setItem('picitac_history_v8', JSON.stringify(historyData));
         }
     }
 
@@ -711,7 +689,7 @@
         });
         snacksData.forEach(s => {
             if (state[s.id] && state[s.id]['p'] > 0) {
-                html += `<div style="margin-bottom: 4px;"><strong>${state[s.id]['p']}x</strong> ${state[s.id]['p']}</div>`;
+                html += `<div style="margin-bottom: 4px;"><strong>${state[s.id]['p']}x</strong> ${s.name}</div>`;
             }
         });
 
@@ -755,7 +733,7 @@
     function clearHistory() {
         if (confirm("Opravdu vymazat celou historii návštěv?")) {
             historyData = [];
-            localStorage.removeItem('picitac_history_v7');
+            localStorage.removeItem('picitac_history_v8');
             showHistory();
         }
     }
