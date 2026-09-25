@@ -29,7 +29,6 @@
             padding-bottom: 140px;
         }
 
-        /* PŮVODNÍ GRAFIKA HLAVIČKY */
         header {
             text-align: center;
             background: linear-gradient(135deg, #e67e22, #d35400, #f39c12);
@@ -349,7 +348,6 @@
     </div>
 </div>
 
-<!-- Modal Účet -->
 <div class="modal" id="receipt-modal">
     <div class="modal-content">
         <h2>🧾 Přehled útraty</h2>
@@ -358,7 +356,6 @@
     </div>
 </div>
 
-<!-- Modal Historie -->
 <div class="modal" id="history-modal">
     <div class="modal-content">
         <h2>📜 Historie návštěv</h2>
@@ -400,19 +397,20 @@
     let timerInterval = null;
 
     function initData() {
-        let savedBeers = localStorage.getItem('picitac_beers_v5');
+        let savedBeers = localStorage.getItem('picitac_beers_v6');
         beersData = savedBeers ? JSON.parse(savedBeers) : [...defaultBeers];
 
-        let savedState = localStorage.getItem('picitac_state_v5');
+        let savedState = localStorage.getItem('picitac_state_v6');
         state = savedState ? JSON.parse(savedState) : {};
 
-        let savedHist = localStorage.getItem('picitac_history_v5');
+        let savedHist = localStorage.getItem('picitac_history_v6');
         historyData = savedHist ? JSON.parse(savedHist) : [];
 
         updateDate();
         render();
         calc();
         startAutoRefreshTimer();
+        fetchMenuFromWeb(); // Načíst při spuštění
     }
 
     function updateDate() {
@@ -442,38 +440,57 @@
         fetchMenuFromWeb();
     }
 
-    function fetchMenuFromWeb() {
+    // Odolnější systém stahování: střídá 3 různé proxy způsoby
+    async function fetchMenuFromWeb() {
         const statusEl = document.getElementById('refresh-status');
-        statusEl.innerHTML = '⏳ Načítám nabídku...';
+        statusEl.innerHTML = '⏳ Načítám z Malt Worm...';
 
-        // Využití JSONP / veřejné no-cors proxy pro lokální HTML soubory
         const targetUrl = 'https://maltworm.cz/dnes-na-cepu/';
-        const apiUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(targetUrl);
+        
+        const proxies = [
+            async () => {
+                const r = await fetch('https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(targetUrl));
+                return await r.text();
+            },
+            async () => {
+                const r = await fetch('https://api.allorigins.win/get?url=' + encodeURIComponent(targetUrl));
+                const j = await r.json();
+                return j.contents;
+            },
+            async () => {
+                const r = await fetch('https://corsproxy.io/?' + encodeURIComponent(targetUrl));
+                return await r.text();
+            }
+        ];
 
-        fetch(apiUrl)
-            .then(response => {
-                if (response.ok) return response.json();
-                throw new Error('Chyba sítě');
-            })
-            .then(data => {
-                if (data && data.contents) {
-                    let parsed = parseHTMLMenu(data.contents);
-                    if (parsed && parsed.length > 0) {
-                        beersData = parsed;
-                        localStorage.setItem('picitac_beers_v5', JSON.stringify(beersData));
-                        render();
-                        statusEl.innerHTML = `✅ Aktualizováno (${new Date().toLocaleTimeString()}). Auto za: <span id="timer-count">60</span>s`;
-                        countdownSec = 60;
-                        return;
-                    }
+        let htmlContent = null;
+
+        for (let i = 0; i < proxies.length; i++) {
+            try {
+                htmlContent = await proxies[i]();
+                if (htmlContent && htmlContent.length > 500) {
+                    break; // Úspěšně načteno
                 }
-                throw new Error('Chyba dat');
-            })
-            .catch(err => {
-                // Tichý fallback - neotravuje okny
-                statusEl.innerHTML = `📌 Zobrazena uložená nabídka. Auto za: <span id="timer-count">60</span>s`;
+            } catch (e) {
+                console.warn(`Proxy ${i + 1} selhala, zkouším další...`);
+            }
+        }
+
+        if (htmlContent) {
+            let parsed = parseHTMLMenu(htmlContent);
+            if (parsed && parsed.length >= 3) {
+                beersData = parsed;
+                localStorage.setItem('picitac_beers_v6', JSON.stringify(beersData));
+                render();
+                statusEl.innerHTML = `✅ Aktualizováno (${new Date().toLocaleTimeString()}). Auto za: <span id="timer-count">60</span>s`;
                 countdownSec = 60;
-            });
+                return;
+            }
+        }
+
+        // Pokud všechny proxy selžou
+        statusEl.innerHTML = `📌 Zobrazena uložená nabídka. Auto za: <span id="timer-count">60</span>s`;
+        countdownSec = 60;
     }
 
     function parseHTMLMenu(htmlText) {
@@ -575,7 +592,7 @@
     }
 
     function saveState() {
-        localStorage.setItem('picitac_state_v5', JSON.stringify(state));
+        localStorage.setItem('picitac_state_v6', JSON.stringify(state));
     }
 
     function calc() {
@@ -601,7 +618,7 @@
         const name = prompt("Úprava názvu položky:", item.name);
         if (name) {
             item.name = name;
-            localStorage.setItem('picitac_beers_v5', JSON.stringify(beersData));
+            localStorage.setItem('picitac_beers_v6', JSON.stringify(beersData));
             render();
         }
     }
@@ -662,7 +679,7 @@
                 count: totalPcs
             };
             historyData.unshift(entry);
-            localStorage.setItem('picitac_history_v5', JSON.stringify(historyData));
+            localStorage.setItem('picitac_history_v6', JSON.stringify(historyData));
         }
     }
 
@@ -722,7 +739,7 @@
     function clearHistory() {
         if (confirm("Opravdu vymazat celou historii návštěv?")) {
             historyData = [];
-            localStorage.removeItem('picitac_history_v5');
+            localStorage.removeItem('picitac_history_v6');
             showHistory();
         }
     }
