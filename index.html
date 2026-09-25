@@ -448,41 +448,43 @@
     }
 
     async function fetchMenuFromWeb() {
-        const statusEl = document.getElementById('refresh-status');
-        statusEl.innerHTML = '⏳ Načítám z Renderu... (může trvat ~30s)';
+    const statusEl = document.getElementById('refresh-status');
+    statusEl.innerHTML = '⏳ Načítám z Malt Worm...';
 
-        const renderUrl = 'https://picitac.onrender.com';
+    const targetUrl = 'https://maltworm.cz/dnes-na-cepu/';
+    const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl);
 
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s vypršení času
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000);
 
-            const r = await fetch(renderUrl, { cache: 'no-cache', signal: controller.signal });
-            clearTimeout(timeoutId);
+        const r = await fetch(proxyUrl, { cache: 'no-cache', signal: controller.signal });
+        clearTimeout(timeoutId);
 
-            if (!r.ok) {
-                throw new Error(`Server odpověděl s chybou ${r.status}`);
-            }
-
-            const htmlContent = await r.text();
-
-            if (htmlContent && htmlContent.length > 200) {
-                let parsed = parseHTMLMenu(htmlContent);
-                if (parsed && parsed.length >= 1) {
-                    beersData = parsed;
-                    localStorage.setItem('picitac_beers_v9', JSON.stringify(beersData));
-                    render();
-                    statusEl.innerHTML = `✅ Aktualizováno (${new Date().toLocaleTimeString('cs-CZ', {hour: '2-digit', minute:'2-digit'})}). Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
-                    return;
-                } else {
-                    statusEl.innerHTML = `⚠️ Nepodařilo se najít piva. Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
-                    return;
-                }
-            }
-        } catch (e) {
-            console.warn('Stahování selhalo:', e);
-            statusEl.innerHTML = `❌ Chyba načítání. Zkuste znovu za 15s. Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
+        if (!r.ok) {
+            throw new Error(`Chyba ${r.status}`);
         }
+
+        const htmlContent = await r.text();
+
+        if (htmlContent && htmlContent.length > 200) {
+            let parsed = parseHTMLMenu(htmlContent);
+            if (parsed && parsed.length >= 1) {
+                beersData = parsed;
+                localStorage.setItem('picitac_beers_v9', JSON.stringify(beersData));
+                render();
+                statusEl.innerHTML = `✅ Aktualizováno (${new Date().toLocaleTimeString('cs-CZ', {hour: '2-digit', minute:'2-digit'})}). Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
+                return;
+            } else {
+                statusEl.innerHTML = `⚠️ Nepodařilo se najít piva. Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
+                return;
+            }
+        }
+    } catch (e) {
+        console.warn('Stahování selhalo:', e);
+        statusEl.innerHTML = `❌ Chyba načítání. Zkuste znovu. Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
+    }
+}
     }
 
     function parseHTMLMenu(htmlText) {
