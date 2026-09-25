@@ -110,10 +110,11 @@
         }
 
         .status-msg {
-            font-size: 0.75rem;
+            font-size: 0.78rem;
             color: #f1c40f;
-            margin-top: 6px;
+            margin-top: 8px;
             text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+            min-height: 1.2em;
         }
 
         .section-title {
@@ -324,7 +325,7 @@
             🔄 Obnovit nabídku
         </button>
     </div>
-    <div class="status-msg" id="refresh-status">Auto-aktualizace za: <span id="timer-count">30:00</span></div>
+    <div class="status-msg" id="refresh-status">Příprava automatické aktualizace...</div>
 </header>
 
 <div class="section-title">
@@ -398,13 +399,13 @@
     let timerInterval = null;
 
     function initData() {
-        let savedBeers = localStorage.getItem('picitac_beers_v8');
+        let savedBeers = localStorage.getItem('picitac_beers_v9');
         beersData = savedBeers ? JSON.parse(savedBeers) : [...defaultBeers];
 
-        let savedState = localStorage.getItem('picitac_state_v8');
+        let savedState = localStorage.getItem('picitac_state_v9');
         state = savedState ? JSON.parse(savedState) : {};
 
-        let savedHist = localStorage.getItem('picitac_history_v8');
+        let savedHist = localStorage.getItem('picitac_history_v9');
         historyData = savedHist ? JSON.parse(savedHist) : [];
 
         updateDate();
@@ -430,7 +431,6 @@
     function startAutoRefreshTimer() {
         if (timerInterval) clearInterval(timerInterval);
         countdownSec = REFRESH_INTERVAL_SEC;
-        document.getElementById('timer-count').innerText = formatTime(countdownSec);
 
         timerInterval = setInterval(() => {
             countdownSec--;
@@ -448,41 +448,41 @@
     }
 
     async function fetchMenuFromWeb() {
-    const statusEl = document.getElementById('refresh-status');
-    statusEl.innerHTML = '⏳ Načítám z Renderu...';
+        const statusEl = document.getElementById('refresh-status');
+        statusEl.innerHTML = '⏳ Načítám z Renderu... (může trvat ~30s)';
 
-    const renderUrl = 'https://picitac.onrender.com';
+        const renderUrl = 'https://picitac.onrender.com';
 
-    try {
-        const r = await fetch(renderUrl, { cache: 'no-cache' });
-        
-        if (!r.ok) {
-            throw new Error(`Server vrátil chybu ${r.status}`);
-        }
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 20000); // 20s vypršení času
 
-        const htmlContent = await r.text();
+            const r = await fetch(renderUrl, { cache: 'no-cache', signal: controller.signal });
+            clearTimeout(timeoutId);
 
-        if (htmlContent && htmlContent.length > 200) {
-            let parsed = parseHTMLMenu(htmlContent);
-            if (parsed && parsed.length >= 1) {
-                beersData = parsed;
-                localStorage.setItem('picitac_beers_v8', JSON.stringify(beersData));
-                render();
-                statusEl.innerHTML = `✅ Aktualizováno (${new Date().toLocaleTimeString('cs-CZ', {hour: '2-digit', minute:'2-digit'})}). Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
-                return;
-            } else {
-                statusEl.innerHTML = `⚠️ Nepodařilo se rozpoznat piva v kódu. Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
-                return;
+            if (!r.ok) {
+                throw new Error(`Server odpověděl s chybou ${r.status}`);
             }
-        }
-    } catch (e) {
-        console.warn('Stahování selhalo:', e);
-        statusEl.innerHTML = `❌ Chyba spojení s Renderem (${e.message}). Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
-    }
-}
-        }
 
-        statusEl.innerHTML = `📌 Zobrazená uložená nabídka. Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
+            const htmlContent = await r.text();
+
+            if (htmlContent && htmlContent.length > 200) {
+                let parsed = parseHTMLMenu(htmlContent);
+                if (parsed && parsed.length >= 1) {
+                    beersData = parsed;
+                    localStorage.setItem('picitac_beers_v9', JSON.stringify(beersData));
+                    render();
+                    statusEl.innerHTML = `✅ Aktualizováno (${new Date().toLocaleTimeString('cs-CZ', {hour: '2-digit', minute:'2-digit'})}). Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
+                    return;
+                } else {
+                    statusEl.innerHTML = `⚠️ Nepodařilo se najít piva. Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn('Stahování selhalo:', e);
+            statusEl.innerHTML = `❌ Chyba načítání. Zkuste znovu za 15s. Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
+        }
     }
 
     function parseHTMLMenu(htmlText) {
@@ -597,7 +597,7 @@
     }
 
     function saveState() {
-        localStorage.setItem('picitac_state_v8', JSON.stringify(state));
+        localStorage.setItem('picitac_state_v9', JSON.stringify(state));
     }
 
     function calc() {
@@ -623,7 +623,7 @@
         const name = prompt("Úprava názvu položky:", item.name);
         if (name) {
             item.name = name;
-            localStorage.setItem('picitac_beers_v8', JSON.stringify(beersData));
+            localStorage.setItem('picitac_beers_v9', JSON.stringify(beersData));
             render();
         }
     }
@@ -684,7 +684,7 @@
                 count: totalPcs
             };
             historyData.unshift(entry);
-            localStorage.setItem('picitac_history_v8', JSON.stringify(historyData));
+            localStorage.setItem('picitac_history_v9', JSON.stringify(historyData));
         }
     }
 
@@ -744,7 +744,7 @@
     function clearHistory() {
         if (confirm("Opravdu vymazat celou historii návštěv?")) {
             historyData = [];
-            localStorage.removeItem('picitac_history_v8');
+            localStorage.removeItem('picitac_history_v9');
             showHistory();
         }
     }
