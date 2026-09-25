@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>PiČítač - Malt Worm</title>
+    <style>
+        :root {
+            --beer-gold: #f39c12;
+            --beer-foam: #fff8e7;
+            --bg-dark: #120905;
+            --card-bg: #2a1b12;
+            --text-light: #fefefe;
+            --accent-red: #e74c3c;
+            --accent-blue: #3498db;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-light);
+            margin: 0;
+            padding: 10px;
+            padding-bottom: 140px;
+        }
+
+        /* PŮVODNÍ GRAFIKA HLAVIČKY */
+        header {
+            text-align: center;
+            background: linear-gradient(135deg, #e67e22, #d35400, #f39c12);
+            color: #fff;
+            padding: 16px 12px;
+            border-radius: 18px;
+            box-shadow: 0 6px 20px rgba(230, 126, 34, 0.4);
+            margin-bottom: 14px;
+            border: 2px solid #f1c40f;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: "🍺 🌿 🍺 🌿 🍺";
+            position: absolute;
+            top: -5px;
+            left: 0;
+            right: 0;
+            font-size: 0.75rem;
+            opacity: 0.35;
+            letter-spacing: 6px;
+        }
+
+        header h1 {
+            margin: 4px 0 2px 0;
+            font-size: 1.8rem;
+            font-weight: 900;
+            letter-spacing: 1px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.6);
+            color: #fff8e7;
+        }
+
+        .header-subtitle {
+            font-size: 0.8rem;
+            color: #ffeaa7;
+            font-weight: bold;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .today-date {
+            display: inline-block;
+            background: rgba(0, 0, 0, 0.4);
+            color: #fff8e7;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .refresh-box {
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-refresh {
+            background: #1a0f0a;
+            color: var(--beer-gold);
+            border: 1px solid #f1c40f;
+            padding: 8px 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+        }
+
+        .btn-refresh:active {
+            transform: scale(0.95);
+        }
+
+        .status-msg {
+            font-size: 0.75rem;
+            color: #f1c40f;
+            margin-top: 6px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        }
+
+        .section-title {
+            color: var(--beer-gold);
+            border-bottom: 2px dashed var(--beer-gold);
+            padding-bottom: 4px;
+            margin: 16px 0 10px;
+            font-size: 1.05rem;
+            font-weight: bold;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .item-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            padding: 10px 12px;
+            margin-bottom: 8px;
+            border: 1px solid rgba(243, 156, 18, 0.2);
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 8px;
+        }
+
+        .item-name {
+            font-size: 0.95rem;
+            font-weight: bold;
+            color: var(--beer-foam);
+            flex-grow: 1;
+            line-height: 1.25;
+        }
+
+        .btn-edit {
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            font-size: 0.85rem;
+            padding: 0 4px;
+        }
+
+        .item-sub {
+            font-size: 0.78rem;
+            color: #bbb;
+            margin: 3px 0 8px 0;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 6px;
+        }
+
+        .size-control {
+            flex: 1;
+            background: #3e2719;
+            border: 1px solid rgba(243, 156, 18, 0.5);
+            border-radius: 8px;
+            padding: 4px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .size-label {
+            font-size: 0.72rem;
+            font-weight: bold;
+            color: var(--beer-foam);
+            margin-bottom: 2px;
+        }
+
+        .btn-counter-group {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+        }
+
+        .btn-step {
+            background: var(--beer-gold);
+            color: #000;
+            border: none;
+            width: 28px;
+            height: 32px;
+            border-radius: 6px;
+            font-size: 1.1rem;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-step-minus { background: #c0392b; color: #fff; }
+
+        .count-badge {
+            background: #f1c40f;
+            color: #000;
+            padding: 2px 4px;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 900;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .summary-bar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background: #120905;
+            border-top: 3px solid var(--beer-gold);
+            padding: 10px 14px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+            box-shadow: 0 -4px 15px rgba(0,0,0,0.8);
+        }
+
+        .summary-text { font-size: 0.85rem; line-height: 1.3; }
+        .summary-text strong { color: var(--beer-gold); font-size: 1.1rem; }
+
+        .action-btns { display: flex; gap: 6px; }
+
+        .btn-action {
+            border: none;
+            padding: 10px 10px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 0.8rem;
+            cursor: pointer;
+        }
+
+        .btn-reset { background: var(--accent-red); color: white; }
+        .btn-history { background: var(--accent-blue); color: white; }
+        .btn-detail { background: var(--beer-gold); color: #111; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 200;
+            padding: 16px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: #2a1b12;
+            color: #fff;
+            padding: 18px;
+            border-radius: 16px;
+            max-width: 400px;
+            width: 100%;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid var(--beer-gold);
+        }
+
+        .modal-content h2 {
+            margin-top: 0;
+            color: var(--beer-gold);
+            border-bottom: 1px solid #444;
+            padding-bottom: 8px;
+        }
+
+        .btn-close {
+            width: 100%;
+            background: var(--beer-gold);
+            color: #111;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            margin-top: 15px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .history-item {
+            background: #1a0f0a;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 8px;
+            border-left: 3px solid var(--beer-gold);
+            font-size: 0.85rem;
+        }
+
+        .history-date {
+            font-weight: bold;
+            color: var(--beer-gold);
+            margin-bottom: 4px;
+        }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-subtitle">🍺 Pivní lístek & Čárkovník 🍺</div>
+    <h1>PiČítač</h1>
+    <div class="today-date" id="current-date">Načítám datum...</div>
+    <div class="refresh-box">
+        <button class="btn-refresh" onclick="manualFetchMenu()">
+            🔄 Obnovit nabídku
+        </button>
+    </div>
+    <div class="status-msg" id="refresh-status">Auto-aktualizace za: <span id="timer-count">60</span>s</div>
+</header>
+
+<div class="section-title">
+    <span>🍺 Dnes na čepu v Malt Worm</span>
+</div>
+<div id="beers-list"></div>
+
+<div class="section-title">
+    <span>🥨 Pochutiny</span>
+</div>
+<div id="snack-list"></div>
+
+<div class="summary-bar">
+    <div class="summary-text">
+        Ks: <strong id="total-count">0</strong> | Vol: <strong id="total-volume">0</strong> L
+    </div>
+    <div class="action-btns">
+        <button class="btn-action btn-reset" onclick="resetAll()">🗑️ Nulovat</button>
+        <button class="btn-action btn-history" onclick="showHistory()">📜 Historie</button>
+        <button class="btn-action btn-detail" onclick="showReceipt()">🧾 Účet</button>
+    </div>
+</div>
+
+<!-- Modal Účet -->
+<div class="modal" id="receipt-modal">
+    <div class="modal-content">
+        <h2>🧾 Přehled útraty</h2>
+        <div id="receipt-details"></div>
+        <button class="btn-close" onclick="closeModal('receipt-modal')">Zavřít</button>
+    </div>
+</div>
+
+<!-- Modal Historie -->
+<div class="modal" id="history-modal">
+    <div class="modal-content">
+        <h2>📜 Historie návštěv</h2>
+        <div id="history-details"></div>
+        <button class="btn-close" onclick="closeModal('history-modal')">Zavřít</button>
+    </div>
+</div>
+
+<script>
+    const defaultBeers = [
+        { id: 1, name: "1. Hauskrecht Špilberk 10°", style: "Pale Lager 3,8%" },
+        { id: 2, name: "2. Mazák Extra hořká 11°", style: "Czech Pale Lager 4,6%" },
+        { id: 3, name: "3. Ayinger Lager Hell 11.8°", style: "Münchener Helles 4,9%" },
+        { id: 4, name: "4. Matuška Fastball 9°", style: "American Pale Ale 3,8%" },
+        { id: 5, name: "5. Zichovec Kartel Vavřík 63 11°", style: "NE Pale Ale 4,6%" },
+        { id: 6, name: "6. Libertas 14°", style: "American IPA 5,9%" },
+        { id: 7, name: "7. Zichovec 17°", style: "NEIPA 7,0%" },
+        { id: 8, name: "8. JBM Brew Lab 12°", style: "Flavoured Sour Ale 5,2%" },
+        { id: 9, name: "9. JBM Piñacolada 12°", style: "Sour Ale 5,0%" },
+        { id: 10, name: "10. Vik Virgin Garden", style: "Non Alcohol Sour" },
+        { id: 11, name: "11. JBM Not Bad For Brno 12°", style: "Sour Ale 5,5%" },
+        { id: 12, name: "12. JBM The Witch's Pineapple", style: "Sour 5,3%" },
+        { id: 13, name: "13. Maisel & Friends Sour Power", style: "Sour NEIPA 6,3%" },
+        { id: 14, name: "14. Van Honsebrouck Kasteel Rouge", style: "Belgian Dark 8,0%" },
+        { id: 15, name: "15. Johannes Cyder", style: "Cider 7,0%" },
+        { id: 16, name: "16. Malt Worm Limo Strawberry", style: "Limonáda 0,0%" }
+    ];
+
+    const snacksData = [
+        { id: 101, name: "🍞 Chlebík" },
+        { id: 102, name: "🥔 Chipsy" },
+        { id: 103, name: "🌽 Křupky" }
+    ];
+
+    let beersData = [];
+    let state = {};
+    let historyData = [];
+    let countdownSec = 60;
+    let timerInterval = null;
+
+    function initData() {
+        let savedBeers = localStorage.getItem('picitac_beers_v5');
+        beersData = savedBeers ? JSON.parse(savedBeers) : [...defaultBeers];
+
+        let savedState = localStorage.getItem('picitac_state_v5');
+        state = savedState ? JSON.parse(savedState) : {};
+
+        let savedHist = localStorage.getItem('picitac_history_v5');
+        historyData = savedHist ? JSON.parse(savedHist) : [];
+
+        updateDate();
+        render();
+        calc();
+        startAutoRefreshTimer();
+    }
+
+    function updateDate() {
+        const d = new Date();
+        const days = ['Neděle', 'Pondělí', 'Úterý', 'Středa', 'Čtvrtek', 'Pátek', 'Sobota'];
+        const formatted = `📅 ${days[d.getDay()]} ${d.getDate()}.${d.getMonth()+1}.${d.getFullYear()}`;
+        document.getElementById('current-date').innerText = formatted;
+    }
+
+    function startAutoRefreshTimer() {
+        if (timerInterval) clearInterval(timerInterval);
+        countdownSec = 60;
+        document.getElementById('timer-count').innerText = countdownSec;
+
+        timerInterval = setInterval(() => {
+            countdownSec--;
+            let el = document.getElementById('timer-count');
+            if (el) el.innerText = countdownSec;
+            if (countdownSec <= 0) {
+                countdownSec = 60;
+                fetchMenuFromWeb();
+            }
+        }, 1000);
+    }
+
+    function manualFetchMenu() {
+        fetchMenuFromWeb();
+    }
+
+    function fetchMenuFromWeb() {
+        const statusEl = document.getElementById('refresh-status');
+        statusEl.innerHTML = '⏳ Načítám nabídku...';
+
+        // Využití JSONP / veřejné no-cors proxy pro lokální HTML soubory
+        const targetUrl = 'https://maltworm.cz/dnes-na-cepu/';
+        const apiUrl = 'https://api.allorigins.win/get?url=' + encodeURIComponent(targetUrl);
+
+        fetch(apiUrl)
+            .then(response => {
+                if (response.ok) return response.json();
+                throw new Error('Chyba sítě');
+            })
+            .then(data => {
+                if (data && data.contents) {
+                    let parsed = parseHTMLMenu(data.contents);
+                    if (parsed && parsed.length > 0) {
+                        beersData = parsed;
+                        localStorage.setItem('picitac_beers_v5', JSON.stringify(beersData));
+                        render();
+                        statusEl.innerHTML = `✅ Aktualizováno (${new Date().toLocaleTimeString()}). Auto za: <span id="timer-count">60</span>s`;
+                        countdownSec = 60;
+                        return;
+                    }
+                }
+                throw new Error('Chyba dat');
+            })
+            .catch(err => {
+                // Tichý fallback - neotravuje okny
+                statusEl.innerHTML = `📌 Zobrazena uložená nabídka. Auto za: <span id="timer-count">60</span>s`;
+                countdownSec = 60;
+            });
+    }
+
+    function parseHTMLMenu(htmlText) {
+        try {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(htmlText, 'text/html');
+            let fetchedBeers = [];
+            let idx = 1;
+
+            const textContent = doc.body ? doc.body.innerText : "";
+            const lines = textContent.split('\n').map(l => l.trim()).filter(l => l.length > 3);
+
+            lines.forEach(line => {
+                if (/^\d+\.|(Lager|IPA|APA|Sour|Ale|Pilsner|Stout|Cider|Limo|10°|11°|12°|13°|14°|15°)/i.test(line) && fetchedBeers.length < 16) {
+                    if (!line.includes("Dnes na čepu") && !line.includes("Malt Worm")) {
+                        fetchedBeers.push({
+                            id: idx,
+                            name: line.startsWith(idx + ".") ? line : `${idx}. ${line}`,
+                            style: "Na čepu"
+                        });
+                        idx++;
+                    }
+                }
+            });
+
+            return fetchedBeers;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    function render() {
+        const bCont = document.getElementById('beers-list');
+        bCont.innerHTML = '';
+        beersData.forEach(b => {
+            if (!state[b.id]) state[b.id] = { '0.2': 0, '0.33': 0, '0.5': 0 };
+            const div = document.createElement('div');
+            div.className = 'item-card';
+            div.innerHTML = `
+                <div class="item-header">
+                    <div class="item-name">${b.name}</div>
+                    <button class="btn-edit" onclick="editName(${b.id})">✏️</button>
+                </div>
+                <div class="item-sub">${b.style || ''}</div>
+                <div class="btn-group">
+                    ${['0.2', '0.33', '0.5'].map(s => `
+                        <div class="size-control">
+                            <span class="size-label">${s}l</span>
+                            <div class="btn-counter-group">
+                                <button class="btn-step btn-step-minus" onclick="add(${b.id}, '${s}', -1)">-</button>
+                                <span class="count-badge" id="b-${b.id}-${s}">${state[b.id][s] || 0}</span>
+                                <button class="btn-step" onclick="add(${b.id}, '${s}', 1)">+</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+            bCont.appendChild(div);
+        });
+
+        const sCont = document.getElementById('snack-list');
+        sCont.innerHTML = '';
+        snacksData.forEach(s => {
+            if (!state[s.id]) state[s.id] = { 'p': 0 };
+            const div = document.createElement('div');
+            div.className = 'item-card';
+            div.innerHTML = `
+                <div class="item-header">
+                    <div class="item-name">${s.name}</div>
+                </div>
+                <div class="btn-group" style="margin-top:6px;">
+                    <div class="size-control">
+                        <div class="btn-counter-group">
+                            <button class="btn-step btn-step-minus" onclick="addSnack(${s.id}, -1)">-</button>
+                            <span class="count-badge" id="s-${s.id}">${state[s.id]['p'] || 0}</span>
+                            <button class="btn-step" onclick="addSnack(${s.id}, 1)">+</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            sCont.appendChild(div);
+        });
+    }
+
+    function add(id, size, val) {
+        if (!state[id]) state[id] = { '0.2': 0, '0.33': 0, '0.5': 0 };
+        state[id][size] = Math.max(0, (state[id][size] || 0) + val);
+        document.getElementById(`b-${id}-${size}`).innerText = state[id][size];
+        saveState();
+        calc();
+    }
+
+    function addSnack(id, val) {
+        if (!state[id]) state[id] = { 'p': 0 };
+        state[id]['p'] = Math.max(0, (state[id]['p'] || 0) + val);
+        document.getElementById(`s-${id}`).innerText = state[id]['p'];
+        saveState();
+        calc();
+    }
+
+    function saveState() {
+        localStorage.setItem('picitac_state_v5', JSON.stringify(state));
+    }
+
+    function calc() {
+        let count = 0, vol = 0;
+        beersData.forEach(b => {
+            if (state[b.id]) {
+                ['0.2', '0.33', '0.5'].forEach(s => {
+                    let c = state[b.id][s] || 0;
+                    count += c;
+                    vol += c * parseFloat(s);
+                });
+            }
+        });
+        snacksData.forEach(s => {
+            if (state[s.id]) count += (state[s.id]['p'] || 0);
+        });
+        document.getElementById('total-count').innerText = count;
+        document.getElementById('total-volume').innerText = vol.toFixed(2);
+    }
+
+    function editName(id) {
+        const item = beersData.find(b => b.id === id);
+        const name = prompt("Úprava názvu položky:", item.name);
+        if (name) {
+            item.name = name;
+            localStorage.setItem('picitac_beers_v5', JSON.stringify(beersData));
+            render();
+        }
+    }
+
+    function resetAll() {
+        let hasData = false;
+        Object.keys(state).forEach(k => {
+            Object.keys(state[k]).forEach(s => {
+                if (state[k][s] > 0) hasData = true;
+            });
+        });
+
+        if (!hasData) {
+            alert("Účet je prázdný.");
+            return;
+        }
+
+        if (confirm("Chcete ukončit účet a uložit ho do historie?")) {
+            saveToHistory();
+            state = {};
+            saveState();
+            render();
+            calc();
+        }
+    }
+
+    function saveToHistory() {
+        let items = [];
+        let totalVol = 0;
+        let totalPcs = 0;
+
+        beersData.forEach(b => {
+            if (state[b.id]) {
+                ['0.2', '0.33', '0.5'].forEach(s => {
+                    let c = state[b.id][s] || 0;
+                    if (c > 0) {
+                        items.push(`${c}x ${b.name} (${s}l)`);
+                        totalVol += c * parseFloat(s);
+                        totalPcs += c;
+                    }
+                });
+            }
+        });
+
+        snacksData.forEach(s => {
+            if (state[s.id] && state[s.id]['p'] > 0) {
+                let c = state[s.id]['p'];
+                items.push(`${c}x ${s.name}`);
+                totalPcs += c;
+            }
+        });
+
+        if (items.length > 0) {
+            const entry = {
+                date: new Date().toLocaleString('cs-CZ'),
+                items: items,
+                volume: totalVol.toFixed(2),
+                count: totalPcs
+            };
+            historyData.unshift(entry);
+            localStorage.setItem('picitac_history_v5', JSON.stringify(historyData));
+        }
+    }
+
+    function showReceipt() {
+        let html = '';
+        beersData.forEach(b => {
+            if (state[b.id]) {
+                ['0.2', '0.33', '0.5'].forEach(s => {
+                    let c = state[b.id][s] || 0;
+                    if (c > 0) html += `<div style="margin-bottom: 4px;"><strong>${c}x</strong> ${b.name} (${s}l)</div>`;
+                });
+            }
+        });
+        snacksData.forEach(s => {
+            if (state[s.id] && state[s.id]['p'] > 0) {
+                html += `<div style="margin-bottom: 4px;"><strong>${state[s.id]['p']}x</strong> ${s.name}</div>`;
+            }
+        });
+
+        const totalVol = document.getElementById('total-volume').innerText;
+        const totalPcs = document.getElementById('total-count').innerText;
+
+        if (html === '') {
+            html = '<div style="color:#aaa;">Zatím jste si nic neobjednali.</div>';
+        } else {
+            html += `<hr style="border-color:#444; margin:10px 0;">
+                    <div><strong>Celkem kusů:</strong> ${totalPcs}</div>
+                    <div><strong>Celkový objem:</strong> ${totalVol} L</div>`;
+        }
+
+        document.getElementById('receipt-details').innerHTML = html;
+        document.getElementById('receipt-modal').style.display = 'flex';
+    }
+
+    function showHistory() {
+        let html = '';
+        if (historyData.length === 0) {
+            html = '<div style="color:#aaa; text-align:center;">Historie je prázdná.</div>';
+        } else {
+            historyData.forEach((h) => {
+                html += `
+                    <div class="history-item">
+                        <div class="history-date">📅 ${h.date}</div>
+                        <div>${h.items.join('<br>')}</div>
+                        <div style="margin-top: 4px; font-weight:bold; color:var(--beer-gold);">
+                            Celkem: ${h.count} ks | ${h.volume} L
+                        </div>
+                    </div>
+                `;
+            });
+            html += `<button onclick="clearHistory()" style="background:#c0392b; color:#fff; border:none; padding:8px; border-radius:6px; width:100%; font-weight:bold; margin-top:10px;">🗑️ Vymazat historii</button>`;
+        }
+        document.getElementById('history-details').innerHTML = html;
+        document.getElementById('history-modal').style.display = 'flex';
+    }
+
+    function clearHistory() {
+        if (confirm("Opravdu vymazat celou historii návštěv?")) {
+            historyData = [];
+            localStorage.removeItem('picitac_history_v5');
+            showHistory();
+        }
+    }
+
+    function closeModal(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+
+    window.onload = initData;
+</script>
+</body>
+</html>
