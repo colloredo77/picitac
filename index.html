@@ -399,13 +399,13 @@
     let timerInterval = null;
 
     function initData() {
-        let savedBeers = localStorage.getItem('picitac_beers_v10');
+        let savedBeers = localStorage.getItem('picitac_beers_v11');
         beersData = savedBeers ? JSON.parse(savedBeers) : [...defaultBeers];
 
-        let savedState = localStorage.getItem('picitac_state_v10');
+        let savedState = localStorage.getItem('picitac_state_v11');
         state = savedState ? JSON.parse(savedState) : {};
 
-        let savedHist = localStorage.getItem('picitac_history_v10');
+        let savedHist = localStorage.getItem('picitac_history_v11');
         historyData = savedHist ? JSON.parse(savedHist) : [];
 
         updateDate();
@@ -452,38 +452,42 @@
         statusEl.innerHTML = '⏳ Načítám z Malt Worm...';
 
         const targetUrl = 'https://maltworm.cz/dnes-na-cepu/';
-        const proxyUrl = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl);
+        
+        // Zkuste postupně více proxy služeb
+        const proxies = [
+            'https://corsproxy.io/?' + encodeURIComponent(targetUrl),
+            'https://api.allorigins.win/raw?url=' + encodeURIComponent(targetUrl),
+            'https://thingproxy.freeboard.io/fetch/' + targetUrl
+        ];
 
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 15000);
+        for (let i = 0; i < proxies.length; i++) {
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-            const r = await fetch(proxyUrl, { cache: 'no-cache', signal: controller.signal });
-            clearTimeout(timeoutId);
+                const r = await fetch(proxies[i], { cache: 'no-cache', signal: controller.signal });
+                clearTimeout(timeoutId);
 
-            if (!r.ok) {
-                throw new Error(`Chyba serveru ${r.status}`);
-            }
+                if (!r.ok) continue;
 
-            const htmlContent = await r.text();
+                const htmlContent = await r.text();
 
-            if (htmlContent && htmlContent.length > 200) {
-                let parsed = parseHTMLMenu(htmlContent);
-                if (parsed && parsed.length >= 1) {
-                    beersData = parsed;
-                    localStorage.setItem('picitac_beers_v10', JSON.stringify(beersData));
-                    render();
-                    statusEl.innerHTML = `✅ Aktualizováno (${new Date().toLocaleTimeString('cs-CZ', {hour: '2-digit', minute:'2-digit'})}). Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
-                    return;
-                } else {
-                    statusEl.innerHTML = `⚠️ Nepodařilo se najít piva. Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
-                    return;
+                if (htmlContent && htmlContent.length > 200) {
+                    let parsed = parseHTMLMenu(htmlContent);
+                    if (parsed && parsed.length >= 1) {
+                        beersData = parsed;
+                        localStorage.setItem('picitac_beers_v11', JSON.stringify(beersData));
+                        render();
+                        statusEl.innerHTML = `✅ Aktualizováno (${new Date().toLocaleTimeString('cs-CZ', {hour: '2-digit', minute:'2-digit'})}). Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
+                        return;
+                    }
                 }
+            } catch (e) {
+                console.warn(`Proxy ${i + 1} selhala:`, e);
             }
-        } catch (e) {
-            console.warn('Stahování selhalo:', e);
-            statusEl.innerHTML = `❌ Chyba načítání. Zkuste znovu. Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
         }
+
+        statusEl.innerHTML = `⚠️ Nepodařilo se načíst z webu. Auto za: <span id="timer-count">${formatTime(countdownSec)}</span>`;
     }
 
     function parseHTMLMenu(htmlText) {
@@ -598,7 +602,7 @@
     }
 
     function saveState() {
-        localStorage.setItem('picitac_state_v10', JSON.stringify(state));
+        localStorage.setItem('picitac_state_v11', JSON.stringify(state));
     }
 
     function calc() {
@@ -624,7 +628,7 @@
         const name = prompt("Úprava názvu položky:", item.name);
         if (name) {
             item.name = name;
-            localStorage.setItem('picitac_beers_v10', JSON.stringify(beersData));
+            localStorage.setItem('picitac_beers_v11', JSON.stringify(beersData));
             render();
         }
     }
@@ -685,7 +689,7 @@
                 count: totalPcs
             };
             historyData.unshift(entry);
-            localStorage.setItem('picitac_history_v10', JSON.stringify(historyData));
+            localStorage.setItem('picitac_history_v11', JSON.stringify(historyData));
         }
     }
 
@@ -745,7 +749,7 @@
     function clearHistory() {
         if (confirm("Opravdu vymazat celou historii návštěv?")) {
             historyData = [];
-            localStorage.removeItem('picitac_history_v10');
+            localStorage.removeItem('picitac_history_v11');
             showHistory();
         }
     }
